@@ -1,9 +1,5 @@
 # tor-control
 
-[![Crates.io](https://img.shields.io/crates/v/tor-control.svg)](https://crates.io/crates/tor-control)
-[![Documentation](https://docs.rs/tor-control/badge.svg)](https://docs.rs/tor-control)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-
 A safe, practical, robust, and configurable Rust crate for interfacing with the Tor control protocol.
 
 ## Features
