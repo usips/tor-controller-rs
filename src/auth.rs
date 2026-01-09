@@ -5,7 +5,6 @@
 
 use crate::error::{Result, TorControlError};
 use hmac::{Hmac, Mac};
-use rand::Rng;
 use sha2::Sha256;
 use std::path::Path;
 
@@ -176,9 +175,9 @@ pub fn read_cookie_file(path: &Path) -> Result<Vec<u8>> {
 
 /// Generate a random client nonce for SAFECOOKIE authentication.
 pub fn generate_client_nonce() -> [u8; 32] {
-    let mut rng = rand::thread_rng();
+    use rand::Rng;
     let mut nonce = [0u8; 32];
-    rng.fill(&mut nonce);
+    rand::rng().fill(&mut nonce);
     nonce
 }
 
