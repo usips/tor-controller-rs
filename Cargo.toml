@@ -1,0 +1,48 @@
+[package]
+name = "tor-control"
+# Version 0.1.1 - based on Tor Control Protocol v1 (from Tor 0.1.1.x era)
+version = "0.1.1"
+edition = "2021"
+authors = ["Josh"]
+description = "A safe, practical, and robust Rust library for interfacing with the Tor Control Protocol"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/josh/tor-control-rs"
+documentation = "https://docs.rs/tor-control"
+readme = "README.md"
+keywords = ["tor", "control", "protocol", "privacy", "network"]
+categories = ["network-programming", "api-bindings"]
+
+[features]
+default = ["tokio-runtime"]
+tokio-runtime = [
+    "tokio",
+    "tokio/net",
+    "tokio/io-util",
+    "tokio/sync",
+    "tokio/time",
+]
+
+[dependencies]
+thiserror = "1.0"
+tracing = "0.1"
+hex = "0.4"
+rand = "0.8"
+sha2 = "0.10"
+hmac = "0.12"
+base64 = "0.21"
+
+# Async runtime (optional, default enabled)
+tokio = { version = "1.0", features = [
+    "net",
+    "io-util",
+    "sync",
+    "time",
+], optional = true }
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["full", "test-util"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
