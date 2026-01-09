@@ -4,7 +4,7 @@
 //!
 //! Run with: cargo run --example basic
 
-use tor_control::{TorClient, Result};
+use tor_controller::{Result, TorClient};
 
 #[tokio::main]
 async fn main() -> Result<()> {

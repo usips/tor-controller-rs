@@ -4,7 +4,7 @@
 //!
 //! Run with: cargo run --example onion_service
 
-use tor_control::{TorClient, Result};
+use tor_controller::{TorClient, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {

@@ -1,4 +1,4 @@
-//! # tor-control
+//! # tor-controller
 //!
 //! A safe, practical, robust, and configurable Rust crate for interfacing with
 //! the Tor control protocol.
@@ -16,7 +16,7 @@
 //! ## Quick Start
 //!
 //! ```rust,no_run
-//! use tor_control::{TorClient, Result};
+//! use tor_controller::{TorClient, Result};
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
@@ -43,9 +43,9 @@
 //! The crate supports all Tor authentication methods:
 //!
 //! ```rust,no_run
-//! use tor_control::{TorClient, AuthCredential};
+//! use tor_controller::{TorClient, AuthCredential};
 //!
-//! # async fn example() -> tor_control::Result<()> {
+//! # async fn example() -> tor_controller::Result<()> {
 //! let mut client = TorClient::connect_default().await?;
 //!
 //! // NULL authentication (no password required)
@@ -70,8 +70,8 @@
 //! Query and modify Tor configuration:
 //!
 //! ```rust,no_run
-//! # use tor_control::TorClient;
-//! # async fn example() -> tor_control::Result<()> {
+//! # use tor_controller::TorClient;
+//! # async fn example() -> tor_controller::Result<()> {
 //! # let mut client = TorClient::connect_default().await?;
 //! // Get a configuration value
 //! if let Some(socks_port) = client.get_conf("SocksPort").await? {
@@ -92,8 +92,8 @@
 //! Subscribe to Tor events:
 //!
 //! ```rust,no_run
-//! # use tor_control::{TorClient, EventType};
-//! # async fn example() -> tor_control::Result<()> {
+//! # use tor_controller::{TorClient, EventType};
+//! # async fn example() -> tor_controller::Result<()> {
 //! # let mut client = TorClient::connect_default().await?;
 //! // Subscribe to circuit and bandwidth events
 //! client.set_events(&[EventType::Circ, EventType::Bw]).await?;
@@ -112,8 +112,8 @@
 //! Create and manage hidden services:
 //!
 //! ```rust,no_run
-//! # use tor_control::TorClient;
-//! # async fn example() -> tor_control::Result<()> {
+//! # use tor_controller::TorClient;
+//! # async fn example() -> tor_controller::Result<()> {
 //! # let mut client = TorClient::connect_default().await?;
 //! // Create a new onion service
 //! let service = client.add_onion(
@@ -168,9 +168,9 @@ pub use config::{ConnectionAddress, TorControlConfig};
 pub use events::{Event, EventType};
 pub use protocol::{Reply, ReplyLine};
 pub use types::{
-    BootstrapStatus, BandwidthStats, CircuitId, CircuitPurpose, CircuitStatus,
-    ConnectionId, Fingerprint, OnionAddress, OrConnStatus, ServerSpec, Signal,
-    StreamId, StreamStatus, TorVersion,
+    BandwidthStats, BootstrapStatus, CircuitId, CircuitPurpose, CircuitStatus, ConnectionId,
+    Fingerprint, OnionAddress, OrConnStatus, ServerSpec, Signal, StreamId, StreamStatus,
+    TorVersion,
 };
 
 /// Library version.

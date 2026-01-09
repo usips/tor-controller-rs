@@ -5,7 +5,7 @@
 //!
 //! Run with: cargo run --example new_identity
 
-use tor_control::{Signal, TorClient, Result};
+use tor_controller::{Signal, TorClient, Result};
 use std::time::Duration;
 
 #[tokio::main]

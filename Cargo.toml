@@ -1,5 +1,5 @@
 [package]
-name = "tor-control"
+name = "tor-controller"
 # Version 0.1.1 - based on Tor Control Protocol v1 (from Tor 0.1.1.x era)
 version = "0.1.1"
 edition = "2021"
@@ -7,7 +7,7 @@ authors = ["Josh"]
 description = "A safe, practical, and robust Rust library for interfacing with the Tor Control Protocol"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/josh/tor-control-rs"
-documentation = "https://docs.rs/tor-control"
+documentation = "https://docs.rs/tor-controller"
 readme = "README.md"
 keywords = ["tor", "control", "protocol", "privacy", "network"]
 categories = ["network-programming", "api-bindings"]

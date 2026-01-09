@@ -1,4 +1,8 @@
-# tor-control
+# tor-controller
+
+[![Crates.io](https://img.shields.io/crates/v/tor-controller.svg)](https://crates.io/crates/tor-controller)
+[![Documentation](https://docs.rs/tor-controller/badge.svg)](https://docs.rs/tor-controller)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A safe, practical, robust, and configurable Rust crate for interfacing with the Tor control protocol.
 
@@ -16,13 +20,13 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tor-control = "0.1.1"
+tor-controller = "0.1.1"
 ```
 
 ## Quick Start
 
 ```rust
-use tor_control::{TorClient, Result};
+use tor_controller::{TorClient, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -98,7 +102,7 @@ client.save_conf(false).await?;
 ### Circuit Management
 
 ```rust
-use tor_control::{Signal, CircuitId};
+use tor_controller::{Signal, CircuitId};
 
 // Request new identity (new circuits)
 client.signal(Signal::NewNym).await?;
@@ -136,7 +140,7 @@ client.del_onion(&service.address.service_id()).await?;
 ### Event Monitoring
 
 ```rust
-use tor_control::EventType;
+use tor_controller::EventType;
 
 // Subscribe to events
 client.set_events(&[EventType::Circ, EventType::Stream, EventType::Bw]).await?;
@@ -167,7 +171,7 @@ println!("Traffic read: {} bytes", traffic);
 ## Signals
 
 ```rust
-use tor_control::Signal;
+use tor_controller::Signal;
 
 // Request new identity
 client.signal(Signal::NewNym).await?;
@@ -187,7 +191,7 @@ client.signal(Signal::Shutdown).await?;
 All operations return `Result<T, TorControlError>`:
 
 ```rust
-use tor_control::TorControlError;
+use tor_controller::TorControlError;
 
 match client.authenticate(&credential).await {
     Ok(()) => println!("Authenticated!"),
