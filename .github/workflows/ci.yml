@@ -128,6 +128,8 @@ jobs:
         with:
           toolchain: "1.70"
       - uses: Swatinem/rust-cache@v2
+      # Remove Cargo.lock as it may use a newer format incompatible with older Cargo
+      - run: rm -f Cargo.lock
       - run: cargo check --all-features
 
   # Check that the crate builds without default features
