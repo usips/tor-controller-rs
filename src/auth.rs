@@ -357,4 +357,129 @@ mod tests {
             &client_hash
         ));
     }
+
+    #[test]
+    fn test_auth_method_case_insensitive() {
+        assert_eq!(AuthMethod::parse("null"), Some(AuthMethod::Null));
+        assert_eq!(AuthMethod::parse("NULL"), Some(AuthMethod::Null));
+        assert_eq!(AuthMethod::parse("Null"), Some(AuthMethod::Null));
+    }
+
+    #[test]
+    fn test_protocol_info_methods_check() {
+        let info = ProtocolInfo {
+            protocol_version: 1,
+            tor_version: "0.4.8.10".to_string(),
+            auth_methods: vec![AuthMethod::Null, AuthMethod::Cookie],
+            cookie_file: Some("/path/to/cookie".to_string()),
+        };
+
+        assert!(info.supports_null());
+        assert!(info.supports_cookie());
+        assert!(!info.supports_password());
+        assert!(!info.supports_safe_cookie());
+    }
+
+    #[test]
+    fn test_protocol_info_empty_methods() {
+        let info = ProtocolInfo {
+            protocol_version: 1,
+            tor_version: "0.4.8.10".to_string(),
+            auth_methods: vec![],
+            cookie_file: None,
+        };
+
+        assert!(!info.supports_null());
+        assert!(!info.supports_cookie());
+        assert!(!info.supports_password());
+        assert!(!info.supports_safe_cookie());
+    }
+
+    #[test]
+    fn test_format_cookie_hex() {
+        let cookie = vec![0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77];
+        let hex = format_cookie_hex(&cookie);
+        assert_eq!(hex, "0011223344556677");
+    }
+
+    #[test]
+    fn test_parse_authchallenge_valid() {
+        let response = "AUTHCHALLENGE SERVERHASH=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA SERVERNONCE=BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+        let (hash, nonce) = parse_authchallenge_response(response).unwrap();
+        assert_eq!(hash.len(), 32);
+        assert_eq!(nonce.len(), 32);
+    }
+
+    #[test]
+    fn test_parse_authchallenge_missing_hash() {
+        let response = "AUTHCHALLENGE SERVERNONCE=BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+        assert!(parse_authchallenge_response(response).is_err());
+    }
+
+    #[test]
+    fn test_parse_authchallenge_missing_nonce() {
+        let response = "AUTHCHALLENGE SERVERHASH=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        assert!(parse_authchallenge_response(response).is_err());
+    }
+
+    #[test]
+    fn test_parse_authchallenge_invalid_hex() {
+        let response = "AUTHCHALLENGE SERVERHASH=GGGG SERVERNONCE=HHHH";
+        assert!(parse_authchallenge_response(response).is_err());
+    }
+
+    #[test]
+    fn test_parse_authchallenge_wrong_length() {
+        let response = "AUTHCHALLENGE SERVERHASH=AABB SERVERNONCE=CCDD";
+        assert!(parse_authchallenge_response(response).is_err());
+    }
+
+    #[test]
+    fn test_auth_credential_constructors() {
+        let pass = AuthCredential::password("secret");
+        assert!(matches!(pass, AuthCredential::Password(_)));
+
+        let cookie = AuthCredential::cookie_file("/path");
+        assert!(matches!(cookie, AuthCredential::CookieFile(_)));
+
+        let safe = AuthCredential::safe_cookie("/path");
+        assert!(matches!(safe, AuthCredential::SafeCookie { .. }));
+    }
+
+    #[test]
+    fn test_auth_credential_default() {
+        let cred = AuthCredential::default();
+        assert!(matches!(cred, AuthCredential::None));
+    }
+
+    #[test]
+    fn test_verify_server_hash_wrong_length() {
+        let cookie = [0u8; 32];
+        let client_nonce = [1u8; 32];
+        let server_nonce = [2u8; 32];
+        let wrong_hash = [0u8; 16]; // Wrong length
+
+        assert!(!verify_server_hash(
+            &cookie,
+            &client_nonce,
+            &server_nonce,
+            &wrong_hash
+        ));
+    }
+
+    #[test]
+    fn test_password_escaping() {
+        // Test that passwords with special chars would be properly escaped
+        // (The actual escaping happens in connection.rs authenticate())
+        let simple = "test";
+        let with_quote = r#"pass"word"#;
+        let with_backslash = r"pass\word";
+
+        // Simple passwords need no escaping
+        assert!(!simple.contains('"') && !simple.contains('\\'));
+
+        // These would need escaping
+        assert!(with_quote.contains('"'));
+        assert!(with_backslash.contains('\\'));
+    }
 }

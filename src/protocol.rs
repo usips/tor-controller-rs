@@ -368,4 +368,118 @@ mod tests {
         let cmd = format_command("SETCONF", &["SOCKSPort=9050"]);
         assert_eq!(cmd, "SETCONF SOCKSPort=9050\r\n");
     }
+
+    #[test]
+    fn test_reply_line_too_short() {
+        assert!(ReplyLine::parse("25").is_err());
+        assert!(ReplyLine::parse("").is_err());
+    }
+
+    #[test]
+    fn test_reply_line_invalid_code() {
+        assert!(ReplyLine::parse("ABC OK").is_err());
+    }
+
+    #[test]
+    fn test_reply_line_invalid_separator() {
+        assert!(ReplyLine::parse("250/OK").is_err());
+    }
+
+    #[test]
+    fn test_reply_line_minimal() {
+        let line = ReplyLine::parse("250 ").unwrap();
+        assert_eq!(line.code, 250);
+        assert!(line.text.is_empty());
+    }
+
+    #[test]
+    fn test_key_value_empty() {
+        let pairs = parse_key_value_pairs("");
+        assert!(pairs.is_empty());
+    }
+
+    #[test]
+    fn test_key_value_with_escaped_chars() {
+        let pairs = parse_key_value_pairs(r#"MSG="line1\nline2""#);
+        assert_eq!(pairs.get("MSG"), Some(&"line1\nline2".to_string()));
+    }
+
+    #[test]
+    fn test_key_value_with_backslash() {
+        let pairs = parse_key_value_pairs(r#"PATH="C:\\Windows""#);
+        assert_eq!(pairs.get("PATH"), Some(&"C:\\Windows".to_string()));
+    }
+
+    #[test]
+    fn test_key_value_multiple() {
+        let pairs = parse_key_value_pairs("A=1 B=2 C=\"three\"");
+        assert_eq!(pairs.get("A"), Some(&"1".to_string()));
+        assert_eq!(pairs.get("B"), Some(&"2".to_string()));
+        assert_eq!(pairs.get("C"), Some(&"three".to_string()));
+    }
+
+    #[test]
+    fn test_quoting_empty() {
+        assert_eq!(quote_string(""), "\"\"");
+    }
+
+    #[test]
+    fn test_quoting_special_chars() {
+        assert_eq!(quote_string("tab\there"), "\"tab\\there\"");
+        assert_eq!(quote_string("newline\nhere"), "\"newline\\nhere\"");
+        assert_eq!(quote_string("cr\rhere"), "\"cr\\rhere\"");
+    }
+
+    #[test]
+    fn test_command_with_data() {
+        let cmd = format_command_with_data("LOADCONF", &[], "SocksPort 9050\n.hidden");
+        assert!(cmd.contains("+LOADCONF\r\n"));
+        assert!(cmd.contains("SocksPort 9050\r\n"));
+        assert!(cmd.contains("..hidden\r\n")); // Leading dot escaped
+        assert!(cmd.ends_with(".\r\n"));
+    }
+
+    #[test]
+    fn test_data_block_parsing() {
+        let lines = vec![
+            "Line 1".to_string(),
+            "..Leading dot".to_string(),
+            "Line 3".to_string(),
+            ".".to_string(),
+            "Should be ignored".to_string(),
+        ];
+        let data = parse_data_block(&lines);
+        assert_eq!(data, "Line 1\n.Leading dot\nLine 3");
+    }
+
+    #[test]
+    fn test_reply_new_empty() {
+        let result = Reply::new(vec![]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_reply_status_codes() {
+        let reply = Reply::new(vec![ReplyLine::parse("250 OK").unwrap()]).unwrap();
+        assert!(reply.is_success());
+
+        let reply = Reply::new(vec![ReplyLine::parse("515 Bad auth").unwrap()]).unwrap();
+        assert!(!reply.is_success());
+
+        let reply = Reply::new(vec![ReplyLine::parse("650 CIRC 1 BUILT").unwrap()]).unwrap();
+        assert!(reply.is_async_event());
+    }
+
+    #[test]
+    fn test_parse_async_event() {
+        let reply = Reply::new(vec![ReplyLine::parse("650 BW 1000 2000").unwrap()]).unwrap();
+        let (event_name, _data) = parse_async_event(&reply).unwrap();
+        assert_eq!(event_name, "BW");
+    }
+
+    #[test]
+    fn test_parse_async_event_non_async() {
+        let reply = Reply::new(vec![ReplyLine::parse("250 OK").unwrap()]).unwrap();
+        assert!(parse_async_event(&reply).is_none());
+    }
 }

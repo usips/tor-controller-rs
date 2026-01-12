@@ -4,7 +4,7 @@
 //!
 //! Run with: cargo run --example events
 
-use tor_controller::{Event, EventType, TorClient, Result};
+use tor_controller::{Event, EventType, Result, TorClient};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -18,10 +18,10 @@ async fn main() -> Result<()> {
 
     // Subscribe to various event types
     let events_to_monitor = [
-        EventType::Circ,      // Circuit events
-        EventType::Stream,    // Stream events
-        EventType::Bw,        // Bandwidth events
-        EventType::Notice,    // Notice-level log messages
+        EventType::Circ,          // Circuit events
+        EventType::Stream,        // Stream events
+        EventType::Bw,            // Bandwidth events
+        EventType::Notice,        // Notice-level log messages
         EventType::StatusGeneral, // General status events
     ];
 
@@ -32,52 +32,52 @@ async fn main() -> Result<()> {
     // Read and display events
     loop {
         match client.read_event().await {
-            Ok(event) => {
-                match &event {
-                    Event::CircuitStatus(circ) => {
-                        let path: Vec<String> = circ.path.iter()
-                            .map(|s| format!("{}", s))
-                            .collect();
-                        println!(
-                            "[CIRCUIT] ID={} Status={:?} Path={}",
-                            circ.circuit_id.0,
-                            circ.status,
-                            if path.is_empty() { "-".to_string() } else { path.join("->") }
-                        );
-                    }
-                    Event::StreamStatus(stream) => {
-                        println!(
-                            "[STREAM] ID={} Status={:?} Target={}",
-                            stream.stream_id.0,
-                            stream.status,
-                            stream.target
-                        );
-                    }
-                    Event::Bandwidth(bw) => {
-                        println!(
-                            "[BANDWIDTH] Read: {} bytes/s, Written: {} bytes/s",
-                            bw.bytes_read, bw.bytes_written
-                        );
-                    }
-                    Event::Log(log) => {
-                        println!("[LOG:{}] {}", log.severity.as_str(), log.message);
-                    }
-                    Event::Status(status) => {
-                        let args: Vec<String> = status.arguments.iter()
-                            .map(|(k, v)| format!("{}={}", k, v))
-                            .collect();
-                        println!(
-                            "[STATUS:{}] {} - {}",
-                            status.status_type.as_str(),
-                            status.action,
-                            args.join(" ")
-                        );
-                    }
-                    _ => {
-                        println!("[EVENT] {:?}", event);
-                    }
+            Ok(event) => match &event {
+                Event::CircuitStatus(circ) => {
+                    let path: Vec<String> = circ.path.iter().map(|s| format!("{}", s)).collect();
+                    println!(
+                        "[CIRCUIT] ID={} Status={:?} Path={}",
+                        circ.circuit_id.0,
+                        circ.status,
+                        if path.is_empty() {
+                            "-".to_string()
+                        } else {
+                            path.join("->")
+                        }
+                    );
                 }
-            }
+                Event::StreamStatus(stream) => {
+                    println!(
+                        "[STREAM] ID={} Status={:?} Target={}",
+                        stream.stream_id.0, stream.status, stream.target
+                    );
+                }
+                Event::Bandwidth(bw) => {
+                    println!(
+                        "[BANDWIDTH] Read: {} bytes/s, Written: {} bytes/s",
+                        bw.bytes_read, bw.bytes_written
+                    );
+                }
+                Event::Log(log) => {
+                    println!("[LOG:{}] {}", log.severity.as_str(), log.message);
+                }
+                Event::Status(status) => {
+                    let args: Vec<String> = status
+                        .arguments
+                        .iter()
+                        .map(|(k, v)| format!("{}={}", k, v))
+                        .collect();
+                    println!(
+                        "[STATUS:{}] {} - {}",
+                        status.status_type.as_str(),
+                        status.action,
+                        args.join(" ")
+                    );
+                }
+                _ => {
+                    println!("[EVENT] {:?}", event);
+                }
+            },
             Err(e) => {
                 eprintln!("Error reading event: {}", e);
                 break;

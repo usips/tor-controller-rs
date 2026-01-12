@@ -177,4 +177,93 @@ mod tests {
         assert!(StatusCode::OperationUnnecessary.is_success());
         assert!(!StatusCode::BadAuthentication.is_success());
     }
+
+    #[test]
+    fn test_status_code_is_error() {
+        assert!(StatusCode::BadAuthentication.is_error());
+        assert!(StatusCode::UnrecognizedCommand.is_error());
+        assert!(StatusCode::InternalError.is_error());
+        assert!(!StatusCode::Ok.is_error());
+        assert!(!StatusCode::AsyncEvent.is_error());
+    }
+
+    #[test]
+    fn test_status_code_as_u16() {
+        assert_eq!(StatusCode::Ok.as_u16(), 250);
+        assert_eq!(StatusCode::BadAuthentication.as_u16(), 515);
+        assert_eq!(StatusCode::AsyncEvent.as_u16(), 650);
+    }
+
+    #[test]
+    fn test_status_code_from_u16_trait() {
+        let code: StatusCode = 250.into();
+        assert_eq!(code, StatusCode::Ok);
+    }
+
+    #[test]
+    fn test_all_status_codes() {
+        let codes = [
+            (250, StatusCode::Ok),
+            (251, StatusCode::OperationUnnecessary),
+            (252, StatusCode::ResourceExhaustedInfo),
+            (451, StatusCode::ResourceExhausted),
+            (500, StatusCode::SyntaxErrorProtocol),
+            (510, StatusCode::UnrecognizedCommand),
+            (511, StatusCode::UnimplementedCommand),
+            (512, StatusCode::SyntaxErrorArgument),
+            (513, StatusCode::UnrecognizedArgument),
+            (514, StatusCode::AuthenticationRequired),
+            (515, StatusCode::BadAuthentication),
+            (550, StatusCode::UnspecifiedError),
+            (551, StatusCode::InternalError),
+            (552, StatusCode::UnrecognizedEntity),
+            (553, StatusCode::InvalidConfigValue),
+            (554, StatusCode::InvalidDescriptor),
+            (555, StatusCode::UnmanagedEntity),
+            (650, StatusCode::AsyncEvent),
+        ];
+
+        for (num, expected) in codes {
+            assert_eq!(StatusCode::from_u16(num), expected);
+        }
+    }
+
+    #[test]
+    fn test_error_display() {
+        let io_err = TorControlError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "file not found",
+        ));
+        assert!(format!("{}", io_err).contains("I/O error"));
+
+        let auth_err = TorControlError::AuthenticationFailed("bad password".to_string());
+        assert!(format!("{}", auth_err).contains("Authentication failed"));
+
+        let cmd_err = TorControlError::CommandRejected {
+            code: 550,
+            message: "Unspecified error".to_string(),
+        };
+        assert!(format!("{}", cmd_err).contains("550"));
+
+        let timeout_err = TorControlError::Timeout;
+        assert!(format!("{}", timeout_err).contains("timed out"));
+
+        let closed_err = TorControlError::ConnectionClosed;
+        assert!(format!("{}", closed_err).contains("closed"));
+    }
+
+    #[test]
+    fn test_error_from_io() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "refused");
+        let tor_err: TorControlError = io_err.into();
+        assert!(matches!(tor_err, TorControlError::Io(_)));
+    }
+
+    #[test]
+    fn test_resource_exhausted_success() {
+        // 252 is considered success (resource exhausted with info)
+        assert!(StatusCode::ResourceExhaustedInfo.is_success());
+        // 451 is not
+        assert!(!StatusCode::ResourceExhausted.is_success());
+    }
 }

@@ -4,7 +4,7 @@
 //!
 //! Run with: cargo run --example onion_service
 
-use tor_controller::{TorClient, Result};
+use tor_controller::{Result, TorClient};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -19,22 +19,27 @@ async fn main() -> Result<()> {
     // Create a new onion service
     // This will create a .onion address that maps virtual port 80 to local port 8080
     println!("Creating onion service...");
-    
-    let service = client.add_onion(
-        &[
-            (80, Some("127.0.0.1:8080")),   // Virtual port 80 -> local 8080
-            (443, Some("127.0.0.1:8443")),  // Virtual port 443 -> local 8443
-        ],
-        None,              // Generate a new key (None = NEW:BEST)
-        &[],               // No special flags
-    ).await?;
+
+    let service = client
+        .add_onion(
+            &[
+                (80, Some("127.0.0.1:8080")),  // Virtual port 80 -> local 8080
+                (443, Some("127.0.0.1:8443")), // Virtual port 443 -> local 8443
+            ],
+            None, // Generate a new key (None = NEW:BEST)
+            &[],  // No special flags
+        )
+        .await?;
 
     println!("Onion service created!");
     println!("  Address: {}", service.address);
     println!("  URL: http://{}", service.address);
 
     if let Some(ref key) = service.private_key {
-        println!("  Private key: {}... (save this to recreate the service)", &key[..50.min(key.len())]);
+        println!(
+            "  Private key: {}... (save this to recreate the service)",
+            &key[..50.min(key.len())]
+        );
     }
 
     println!("\nYour service is now reachable at the onion address above.");
@@ -47,7 +52,7 @@ async fn main() -> Result<()> {
 
     // Delete the onion service
     println!("Deleting onion service...");
-    client.del_onion(&service.address.service_id()).await?;
+    client.del_onion(service.address.service_id()).await?;
     println!("Onion service deleted.");
 
     client.quit().await?;

@@ -5,8 +5,8 @@
 //!
 //! Run with: cargo run --example new_identity
 
-use tor_controller::{Signal, TorClient, Result};
 use std::time::Duration;
+use tor_controller::{Result, Signal, TorClient};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -41,17 +41,9 @@ async fn main() -> Result<()> {
     // Display circuit details
     println!("\nCircuit details:");
     for circuit in circuits_after.iter().take(5) {
-        let path: Vec<String> = circuit
-            .path
-            .iter()
-            .map(|s| format!("{}", s))
-            .collect();
-        
-        println!(
-            "  Circuit {}: {:?}",
-            circuit.id.0,
-            circuit.status,
-        );
+        let path: Vec<String> = circuit.path.iter().map(|s| format!("{}", s)).collect();
+
+        println!("  Circuit {}: {:?}", circuit.id.0, circuit.status,);
         if !path.is_empty() {
             println!("    Path: {}", path.join(" -> "));
         }

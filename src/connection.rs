@@ -4,9 +4,8 @@
 //! communicating with a Tor control port.
 
 use crate::auth::{
-    compute_client_hash, format_cookie_hex, generate_client_nonce,
-    parse_authchallenge_response, read_cookie_file, verify_server_hash, AuthCredential,
-    ProtocolInfo,
+    compute_client_hash, format_cookie_hex, generate_client_nonce, parse_authchallenge_response,
+    read_cookie_file, verify_server_hash, AuthCredential, ProtocolInfo,
 };
 use crate::error::{Result, TorControlError};
 use crate::events::{parse_event, Event, EventType};
@@ -70,7 +69,8 @@ impl TorClient {
 
         loop {
             line.clear();
-            let bytes_read = self.reader
+            let bytes_read = self
+                .reader
                 .read_line(&mut line)
                 .await
                 .map_err(TorControlError::Io)?;
@@ -151,8 +151,17 @@ impl TorClient {
             }
             AuthCredential::Password(password) => {
                 debug!("Authenticating with password");
-                let quoted = quote_string(password);
-                let cmd = format!("AUTHENTICATE {}\r\n", quoted);
+                // Passwords must always be quoted in Tor protocol
+                // Escape any internal quotes and backslashes
+                let escaped: String = password
+                    .chars()
+                    .flat_map(|c| match c {
+                        '"' => vec!['\\', '"'],
+                        '\\' => vec!['\\', '\\'],
+                        _ => vec![c],
+                    })
+                    .collect();
+                let cmd = format!("AUTHENTICATE \"{}\"\r\n", escaped);
                 let reply = self.send_command(&cmd).await?;
                 reply.into_result().map_err(|_| {
                     TorControlError::AuthenticationFailed("Invalid password".to_string())
@@ -193,8 +202,7 @@ impl TorClient {
                 let reply = reply.into_result()?;
 
                 // Parse server response
-                let (server_hash, server_nonce) =
-                    parse_authchallenge_response(reply.first_line())?;
+                let (server_hash, server_nonce) = parse_authchallenge_response(reply.first_line())?;
 
                 // Verify server hash
                 if !verify_server_hash(&cookie, &client_nonce, &server_nonce, &server_hash) {
@@ -211,7 +219,9 @@ impl TorClient {
                 let cmd = format!("AUTHENTICATE {}\r\n", client_hash_hex);
                 let reply = self.send_command(&cmd).await?;
                 reply.into_result().map_err(|_| {
-                    TorControlError::AuthenticationFailed("SAFECOOKIE authentication failed".to_string())
+                    TorControlError::AuthenticationFailed(
+                        "SAFECOOKIE authentication failed".to_string(),
+                    )
                 })?;
             }
         }
@@ -304,7 +314,10 @@ impl TorClient {
             if let Some(pos) = line.text.find('=') {
                 let key = &line.text[..pos];
                 let value = &line.text[pos + 1..];
-                result.entry(key.to_string()).or_default().push(value.to_string());
+                result
+                    .entry(key.to_string())
+                    .or_default()
+                    .push(value.to_string());
             }
         }
 
@@ -426,7 +439,9 @@ impl TorClient {
         circuit_id: Option<CircuitId>,
         path: &[&str],
     ) -> Result<CircuitId> {
-        let circuit_id_str = circuit_id.map(|c| c.0.to_string()).unwrap_or_else(|| "0".to_string());
+        let circuit_id_str = circuit_id
+            .map(|c| c.0.to_string())
+            .unwrap_or_else(|| "0".to_string());
         let path_str = path.join(",");
         let cmd = format_command("EXTENDCIRCUIT", &[&circuit_id_str, &path_str]);
         let reply = self.send_command(&cmd).await?;
@@ -472,7 +487,11 @@ impl TorClient {
     }
 
     /// Attach a stream to a circuit.
-    pub async fn attach_stream(&mut self, stream_id: StreamId, circuit_id: CircuitId) -> Result<()> {
+    pub async fn attach_stream(
+        &mut self,
+        stream_id: StreamId,
+        circuit_id: CircuitId,
+    ) -> Result<()> {
         let stream_str = stream_id.0.to_string();
         let circuit_str = circuit_id.0.to_string();
         let cmd = format_command("ATTACHSTREAM", &[&stream_str, &circuit_str]);

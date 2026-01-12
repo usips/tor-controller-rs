@@ -1,0 +1,33 @@
+# Tor configuration for integration testing
+# See https://2019.www.torproject.org/docs/tor-manual.html
+
+# Control port configuration
+ControlPort 0.0.0.0:9051
+# Use a known password for testing
+# Password is "test" - generated with: tor --hash-password test
+HashedControlPassword 16:9848DE455FC61349605CDBFEA8A0FD3C3AE3C39D6FD8FC9876C1FF80F0
+
+# SOCKS port
+SocksPort 9050
+
+# Data directory
+DataDirectory /var/lib/tor
+
+# Logging
+Log notice stdout
+
+# Disable some features to speed up startup for testing
+# Don't try to be a relay
+ORPort 0
+# Don't try to be a directory server
+DirPort 0
+# Disable fetching extra-info documents (not needed for testing)
+DownloadExtraInfo 0
+
+# Note: We use ADD_ONION for ephemeral services, no static hidden service needed
+
+# Reduce consensus download timeout for faster startup
+TestingTorNetwork 0
+
+# Allow local traffic (needed for onion service testing)
+ExitPolicy reject *:*

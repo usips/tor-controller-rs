@@ -1,0 +1,196 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Check formatting
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  # Run clippy lints
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+
+  # Run unit tests
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run unit tests
+        run: cargo test --lib --all-features
+
+  # Run doc tests
+  doc-test:
+    name: Doc Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run doc tests
+        run: cargo test --doc --all-features
+
+  # Build documentation
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build docs
+        run: cargo doc --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  # Check for security vulnerabilities
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Run integration tests with real Tor
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      tor:
+        image: osminogin/tor-simple:latest
+        ports:
+          - 9050:9050
+          - 9051:9051
+        options: >-
+          --health-cmd "echo 'PROTOCOLINFO 1' | nc -q 1 localhost 9051 | grep -q '250 OK'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 60s
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Wait for Tor to bootstrap
+        run: |
+          echo "Waiting for Tor to bootstrap..."
+          for i in {1..60}; do
+            if echo 'PROTOCOLINFO 1' | nc -q 1 127.0.0.1 9051 | grep -q '250 OK'; then
+              echo "Tor control port is ready"
+              break
+            fi
+            echo "Attempt $i: Tor not ready yet..."
+            sleep 5
+          done
+
+      - name: Run integration tests
+        run: cargo test --test integration -- --test-threads=1
+        env:
+          TOR_CONTROL_PORT: "127.0.0.1:9051"
+
+  # Test minimum supported Rust version
+  msrv:
+    name: MSRV (1.70)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.70"
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --all-features
+
+  # Check that the crate builds without default features
+  no-default-features:
+    name: No Default Features
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --no-default-features
+
+  # Test all feature combinations
+  features:
+    name: Feature Matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features:
+          - ""
+          - "tokio-runtime"
+          - "test-utils"
+          - "tokio-runtime,test-utils"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Check features '${{ matrix.features }}'
+        run: |
+          if [ -z "${{ matrix.features }}" ]; then
+            cargo check --no-default-features
+          else
+            cargo check --no-default-features --features "${{ matrix.features }}"
+          fi
+
+  # Build release binaries (for verification)
+  build:
+    name: Build Release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release --all-features
+
+  # Coverage report
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+      - name: Generate coverage report
+        run: cargo tarpaulin --out xml --all-features --lib
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./cobertura.xml
+          fail_ci_if_error: false

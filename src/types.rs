@@ -570,4 +570,231 @@ mod tests {
         let v2 = OnionAddress::new("exampleonion12");
         assert!(!v2.is_v3());
     }
+
+    #[test]
+    fn test_circuit_id_display() {
+        let id = CircuitId(12345);
+        assert_eq!(format!("{}", id), "12345");
+    }
+
+    #[test]
+    fn test_circuit_id_from_str() {
+        let id: CircuitId = "42".parse().unwrap();
+        assert_eq!(id.0, 42);
+    }
+
+    #[test]
+    fn test_stream_id_display() {
+        let id = StreamId(999);
+        assert_eq!(format!("{}", id), "999");
+    }
+
+    #[test]
+    fn test_connection_id_display() {
+        let id = ConnectionId(1);
+        assert_eq!(format!("{}", id), "1");
+    }
+
+    #[test]
+    fn test_fingerprint_with_prefix() {
+        let fp = Fingerprint::new("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd");
+        assert_eq!(
+            fp.with_prefix(),
+            "$ABCDABCDABCDABCDABCDABCDABCDABCDABCDABCD"
+        );
+    }
+
+    #[test]
+    fn test_fingerprint_lowercase_normalized() {
+        let fp = Fingerprint::new("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd");
+        assert_eq!(fp.as_str(), "ABCDABCDABCDABCDABCDABCDABCDABCDABCDABCD");
+    }
+
+    #[test]
+    fn test_server_spec_display() {
+        let nick = ServerSpec::Nickname("Guard".to_string());
+        assert_eq!(format!("{}", nick), "Guard");
+
+        let fp =
+            ServerSpec::Fingerprint(Fingerprint::new("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"));
+        assert_eq!(
+            format!("{}", fp),
+            "$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        );
+
+        let long = ServerSpec::LongName {
+            fingerprint: Fingerprint::new("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"),
+            nickname: "Exit".to_string(),
+        };
+        assert_eq!(
+            format!("{}", long),
+            "$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB~Exit"
+        );
+    }
+
+    #[test]
+    fn test_server_spec_with_equals() {
+        let spec = ServerSpec::from_str("$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=Guard").unwrap();
+        match spec {
+            ServerSpec::LongName {
+                fingerprint,
+                nickname,
+            } => {
+                assert_eq!(
+                    fingerprint.as_str(),
+                    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                );
+                assert_eq!(nickname, "Guard");
+            }
+            _ => panic!("Expected LongName"),
+        }
+    }
+
+    #[test]
+    fn test_circuit_status_display() {
+        assert_eq!(format!("{}", CircuitStatus::Built), "BUILT");
+        assert_eq!(format!("{}", CircuitStatus::Launched), "LAUNCHED");
+        assert_eq!(format!("{}", CircuitStatus::Unknown), "UNKNOWN");
+    }
+
+    #[test]
+    fn test_circuit_status_parsing_case_insensitive() {
+        assert_eq!(
+            CircuitStatus::from_str("built").unwrap(),
+            CircuitStatus::Built
+        );
+        assert_eq!(
+            CircuitStatus::from_str("BUILT").unwrap(),
+            CircuitStatus::Built
+        );
+        assert_eq!(
+            CircuitStatus::from_str("Built").unwrap(),
+            CircuitStatus::Built
+        );
+    }
+
+    #[test]
+    fn test_circuit_purpose_display() {
+        assert_eq!(format!("{}", CircuitPurpose::General), "GENERAL");
+        assert_eq!(
+            format!("{}", CircuitPurpose::HsClientRend),
+            "HS_CLIENT_REND"
+        );
+        assert_eq!(
+            format!("{}", CircuitPurpose::Unknown("CUSTOM".to_string())),
+            "CUSTOM"
+        );
+    }
+
+    #[test]
+    fn test_circuit_purpose_all_variants() {
+        let purposes = [
+            ("GENERAL", CircuitPurpose::General),
+            ("HS_CLIENT_INTRO", CircuitPurpose::HsClientIntro),
+            ("HS_CLIENT_REND", CircuitPurpose::HsClientRend),
+            ("HS_SERVICE_INTRO", CircuitPurpose::HsServiceIntro),
+            ("HS_SERVICE_REND", CircuitPurpose::HsServiceRend),
+            ("TESTING", CircuitPurpose::Testing),
+            ("CONTROLLER", CircuitPurpose::Controller),
+            ("MEASURE_TIMEOUT", CircuitPurpose::MeasureTimeout),
+        ];
+        for (s, expected) in purposes {
+            assert_eq!(CircuitPurpose::from_str(s).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_stream_status_all_variants() {
+        let statuses = [
+            ("NEW", StreamStatus::New),
+            ("NEWRESOLVE", StreamStatus::NewResolve),
+            ("REMAP", StreamStatus::Remap),
+            ("SENTCONNECT", StreamStatus::SentConnect),
+            ("SENTRESOLVE", StreamStatus::SentResolve),
+            ("SUCCEEDED", StreamStatus::Succeeded),
+            ("FAILED", StreamStatus::Failed),
+            ("CLOSED", StreamStatus::Closed),
+            ("DETACHED", StreamStatus::Detached),
+            ("CONTROLLER_WAIT", StreamStatus::ControllerWait),
+        ];
+        for (s, expected) in statuses {
+            assert_eq!(StreamStatus::from_str(s).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_orconn_status_all_variants() {
+        let statuses = [
+            ("NEW", OrConnStatus::New),
+            ("LAUNCHED", OrConnStatus::Launched),
+            ("CONNECTED", OrConnStatus::Connected),
+            ("FAILED", OrConnStatus::Failed),
+            ("CLOSED", OrConnStatus::Closed),
+        ];
+        for (s, expected) in statuses {
+            assert_eq!(OrConnStatus::from_str(s).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn test_signal_as_str() {
+        assert_eq!(Signal::Reload.as_str(), "RELOAD");
+        assert_eq!(Signal::Shutdown.as_str(), "SHUTDOWN");
+        assert_eq!(Signal::NewNym.as_str(), "NEWNYM");
+        assert_eq!(Signal::ClearDnsCache.as_str(), "CLEARDNSCACHE");
+    }
+
+    #[test]
+    fn test_signal_display() {
+        assert_eq!(format!("{}", Signal::Heartbeat), "HEARTBEAT");
+        assert_eq!(format!("{}", Signal::Dormant), "DORMANT");
+    }
+
+    #[test]
+    fn test_tor_version_parsing() {
+        let v = TorVersion::from_str("0.4.8.10").unwrap();
+        assert_eq!(v.major, 0);
+        assert_eq!(v.minor, 4);
+        assert_eq!(v.micro, 8);
+        assert_eq!(v.patch, 10);
+    }
+
+    #[test]
+    fn test_tor_version_with_prefix() {
+        let v = TorVersion::from_str("Tor 0.4.8.10").unwrap();
+        assert_eq!(v.major, 0);
+        assert_eq!(v.minor, 4);
+    }
+
+    #[test]
+    fn test_tor_version_with_suffix() {
+        let v = TorVersion::from_str("0.4.8.10-dev").unwrap();
+        assert_eq!(v.patch, 10);
+    }
+
+    #[test]
+    fn test_tor_version_display() {
+        let v = TorVersion::from_str("0.4.8.10").unwrap();
+        assert_eq!(format!("{}", v), "0.4.8.10");
+    }
+
+    #[test]
+    fn test_onion_address_full() {
+        let addr = OnionAddress::new("abc123");
+        assert_eq!(addr.full_address(), "abc123.onion");
+        assert_eq!(addr.service_id(), "abc123");
+    }
+
+    #[test]
+    fn test_onion_address_from_str() {
+        let addr: OnionAddress = "test.onion".parse().unwrap();
+        assert_eq!(addr.as_str(), "test");
+    }
+
+    #[test]
+    fn test_bandwidth_stats_default() {
+        let stats = BandwidthStats::default();
+        assert_eq!(stats.bytes_read, 0);
+        assert_eq!(stats.bytes_written, 0);
+    }
 }

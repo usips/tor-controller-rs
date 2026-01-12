@@ -684,4 +684,178 @@ mod tests {
             _ => panic!("Expected NetworkLiveness event"),
         }
     }
+
+    #[test]
+    fn test_circuit_event_parsing() {
+        let event = parse_event(
+            "CIRC",
+            "123 BUILT $AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~Guard,$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB~Middle PURPOSE=GENERAL",
+        );
+        match event {
+            Event::CircuitStatus(circ) => {
+                assert_eq!(circ.circuit_id, CircuitId(123));
+                assert_eq!(circ.status, CircuitStatus::Built);
+                assert_eq!(circ.path.len(), 2);
+                assert_eq!(circ.purpose, Some(CircuitPurpose::General));
+            }
+            _ => panic!("Expected CircuitStatus event"),
+        }
+    }
+
+    #[test]
+    fn test_circuit_event_minimal() {
+        let event = parse_event("CIRC", "1 LAUNCHED");
+        match event {
+            Event::CircuitStatus(circ) => {
+                assert_eq!(circ.circuit_id, CircuitId(1));
+                assert_eq!(circ.status, CircuitStatus::Launched);
+                assert!(circ.path.is_empty());
+            }
+            _ => panic!("Expected CircuitStatus event"),
+        }
+    }
+
+    #[test]
+    fn test_circuit_event_with_reason() {
+        let event = parse_event("CIRC", "5 FAILED $FP~name REASON=TIMEOUT");
+        match event {
+            Event::CircuitStatus(circ) => {
+                assert_eq!(circ.circuit_id, CircuitId(5));
+                assert_eq!(circ.status, CircuitStatus::Failed);
+                assert_eq!(circ.reason, Some("TIMEOUT".to_string()));
+            }
+            _ => panic!("Expected CircuitStatus event"),
+        }
+    }
+
+    #[test]
+    fn test_stream_event_parsing() {
+        let event = parse_event(
+            "STREAM",
+            "42 SUCCEEDED 10 www.example.com:443 PURPOSE=DIR_FETCH",
+        );
+        match event {
+            Event::StreamStatus(stream) => {
+                assert_eq!(stream.stream_id, StreamId(42));
+                assert_eq!(stream.status, StreamStatus::Succeeded);
+                assert_eq!(stream.circuit_id, CircuitId(10));
+                assert_eq!(stream.target, "www.example.com:443");
+                assert_eq!(stream.purpose, Some("DIR_FETCH".to_string()));
+            }
+            _ => panic!("Expected StreamStatus event"),
+        }
+    }
+
+    #[test]
+    fn test_orconn_event_parsing() {
+        let event = parse_event(
+            "ORCONN",
+            "$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~Guard CONNECTED NCIRCS=3",
+        );
+        match event {
+            Event::OrConnStatus(conn) => {
+                assert_eq!(conn.status, OrConnStatus::Connected);
+                assert_eq!(conn.num_circuits, Some(3));
+            }
+            _ => panic!("Expected OrConnStatus event"),
+        }
+    }
+
+    #[test]
+    fn test_log_event_parsing() {
+        let event = parse_event("NOTICE", "Bootstrapped 100%: Done");
+        match event {
+            Event::Log(log) => {
+                assert_eq!(log.severity, LogSeverity::Notice);
+                assert_eq!(log.message, "Bootstrapped 100%: Done");
+            }
+            _ => panic!("Expected Log event"),
+        }
+    }
+
+    #[test]
+    fn test_log_event_severities() {
+        for (sev_str, expected) in [
+            ("DEBUG", LogSeverity::Debug),
+            ("INFO", LogSeverity::Info),
+            ("NOTICE", LogSeverity::Notice),
+            ("WARN", LogSeverity::Warn),
+            ("ERR", LogSeverity::Error),
+        ] {
+            let event = parse_event(sev_str, "test message");
+            match event {
+                Event::Log(log) => assert_eq!(log.severity, expected),
+                _ => panic!("Expected Log event for {}", sev_str),
+            }
+        }
+    }
+
+    #[test]
+    fn test_addrmap_event_parsing() {
+        let event = parse_event("ADDRMAP", "www.example.com 1.2.3.4 \"2024-01-01 12:00:00\"");
+        match event {
+            Event::AddressMap(map) => {
+                assert_eq!(map.original, "www.example.com");
+                assert_eq!(map.new, "1.2.3.4");
+                assert!(map.expiry.is_some());
+            }
+            _ => panic!("Expected AddressMap event"),
+        }
+    }
+
+    #[test]
+    fn test_unknown_event() {
+        let event = parse_event("TOTALLY_UNKNOWN_EVENT", "some data");
+        match event {
+            Event::Unknown { event_type, data } => {
+                assert_eq!(event_type, "TOTALLY_UNKNOWN_EVENT");
+                assert_eq!(data, "some data");
+            }
+            _ => panic!("Expected Unknown event"),
+        }
+    }
+
+    #[test]
+    fn test_event_type_as_str() {
+        assert_eq!(EventType::Circ.as_str(), "CIRC");
+        assert_eq!(EventType::Bw.as_str(), "BW");
+        assert_eq!(EventType::StatusClient.as_str(), "STATUS_CLIENT");
+        assert_eq!(EventType::NetworkLiveness.as_str(), "NETWORK_LIVENESS");
+    }
+
+    #[test]
+    fn test_event_type_display() {
+        assert_eq!(format!("{}", EventType::Circ), "CIRC");
+        assert_eq!(format!("{}", EventType::HsDesc), "HS_DESC");
+    }
+
+    #[test]
+    fn test_log_severity_as_str() {
+        assert_eq!(LogSeverity::Debug.as_str(), "DEBUG");
+        assert_eq!(LogSeverity::Error.as_str(), "ERR");
+    }
+
+    #[test]
+    fn test_status_severity_parsing() {
+        assert_eq!(
+            StatusSeverity::from_str("NOTICE").unwrap(),
+            StatusSeverity::Notice
+        );
+        assert_eq!(
+            StatusSeverity::from_str("WARN").unwrap(),
+            StatusSeverity::Warn
+        );
+        assert_eq!(
+            StatusSeverity::from_str("ERR").unwrap(),
+            StatusSeverity::Error
+        );
+        assert!(StatusSeverity::from_str("UNKNOWN").is_err());
+    }
+
+    #[test]
+    fn test_status_type_as_str() {
+        assert_eq!(StatusType::General.as_str(), "GENERAL");
+        assert_eq!(StatusType::Client.as_str(), "CLIENT");
+        assert_eq!(StatusType::Server.as_str(), "SERVER");
+    }
 }
