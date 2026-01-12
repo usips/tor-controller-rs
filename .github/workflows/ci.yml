@@ -120,13 +120,13 @@ jobs:
 
   # Test minimum supported Rust version
   msrv:
-    name: MSRV (1.70)
+    name: MSRV (1.71)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.70"
+          toolchain: "1.71"
       - uses: Swatinem/rust-cache@v2
       # Remove Cargo.lock as it may use a newer format incompatible with older Cargo
       - run: rm -f Cargo.lock

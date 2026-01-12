@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI workflow with linting, testing, and integration tests
 - Configuration management example (`config.rs`)
 
+### Changed
+- MSRV bumped to 1.71 (required by tokio/mio dependencies)
+
+### Fixed
+- Password authentication now correctly quotes passwords per Tor protocol spec
+
 ## [0.1.1] - 2025-01-12
 
 ### Added
