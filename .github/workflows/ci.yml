@@ -83,26 +83,14 @@ jobs:
   integration:
     name: Integration Tests
     runs-on: ubuntu-latest
-    services:
-      tor:
-        image: osminogin/tor-simple:latest
-        ports:
-          - 9050:9050
-          - 9051:9051
-        options: >-
-          --health-cmd "echo 'PROTOCOLINFO 1' | nc -q 1 localhost 9051 | grep -q '250 OK'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 20
-          --health-start-period 60s
-
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
-      - name: Wait for Tor to bootstrap
+      - name: Build and start Tor container
         run: |
+          docker compose up -d --build
           echo "Waiting for Tor to bootstrap..."
           for i in {1..60}; do
             if echo 'PROTOCOLINFO 1' | nc -q 1 127.0.0.1 9051 | grep -q '250 OK'; then
@@ -112,11 +100,17 @@ jobs:
             echo "Attempt $i: Tor not ready yet..."
             sleep 5
           done
+          docker compose logs tor
 
       - name: Run integration tests
         run: cargo test --test integration -- --test-threads=1
         env:
           TOR_CONTROL_PORT: "127.0.0.1:9051"
+          TOR_PASSWORD: "test"
+
+      - name: Stop Tor container
+        if: always()
+        run: docker compose down
 
   # Test minimum supported Rust version
   msrv:
